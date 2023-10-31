@@ -1,14 +1,16 @@
-
-import './App.css'
+import { Routes, Route } from "react-router-dom"
 
 function App() {
 
   return (
-    <>
-      <div>
-        test
-      </div>
-    </>
+    <main className="flex h-screen">
+      <Routes>
+      {/* public */}
+        <Route path="/sign-in" element={<SigninForm/>}/>
+      {/* private */}
+        <Route index element={<Home/>}/>
+      </Routes>
+    </main>
   )
 }
 
