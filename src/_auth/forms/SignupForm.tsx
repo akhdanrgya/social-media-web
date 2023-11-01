@@ -14,13 +14,19 @@ import { Input } from "@/components/ui/input";
 import { SignupValidation } from "@/lib/validation";
 import { z } from "zod";
 import Loader from "@/components/ui/shared/Loader";
-import { Link } from "react-router-dom";
-import { createUserAccount } from "@/lib/appwrite/api";
+import { Link, useNavigate } from "react-router-dom";
+import { useCreateUserAccount, useSignInAccount } from "@/lib/react-query/queriesAndMutations";
+import { useUserContext } from "@/context/AuthContext";
 
 const SignupForm = () => {
-  const {toast} = useToast()
-  const isLoading = false
+  const { toast } = useToast();
+  const { checkAuthUser, isLoading: isUserLoading} = useUserContext()
+  const navigate = useNavigate()
 
+  const { mutateAsync: createUserAccount, isPending: isCreatingAccount } =
+    useCreateUserAccount();
+
+  const { mutateAsync: signInAccount, isPending: isSignIn} = useSignInAccount()
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof SignupValidation>>({
@@ -36,17 +42,32 @@ const SignupForm = () => {
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof SignupValidation>) {
     // membuat user
-    const newUser = await createUserAccount(values)
-    
+    const newUser = await createUserAccount(values);
 
-    if(!newUser) {
+    if (!newUser) {
       return toast({
-        title: "Sign up failed. Please try again"
-      })
+        title: "Sign up failed. Please try again",
+      });
     }
 
-    // const session = await signInAccount()
+    const session = await signInAccount({
+      email: values.email,
+      password: values.password
+    })
 
+    if(!session){
+      return toast({title: 'Sign Up failed. Please try again.'})
+    }
+
+    const isLoggedIn = await checkAuthUser()
+
+    if(isLoggedIn){
+      form.reset
+
+      navigate("/")
+    } else {
+      return toast({ title: 'Sign Up failed. Please try again.'})
+    }
   }
 
   return (
@@ -61,7 +82,10 @@ const SignupForm = () => {
           To use Sosmedku, please enter yout account details
         </p>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5 w-full mt-4">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col gap-5 w-full mt-4"
+        >
           <FormField
             control={form.control}
             name="name"
@@ -115,18 +139,25 @@ const SignupForm = () => {
             )}
           />
           <Button type="submit" className="shad-button_primary">
-            {isLoading ? (
+            {isCreatingAccount || isSignIn || isUserLoading ? (
               <div className="flex-center gap-2">
-                <Loader/>Loading...
+                <Loader />
+                Loading...
               </div>
-            ): "Sign up"}
+            ) : (
+              "Sign up"
+            )}
           </Button>
 
-              <p className="text-small-regular text-light-2 text-center mt-2">
-                Already have an account?
-                <Link to="/sign-in" className="text-primary-500 text-small-semibold ml-1">Log in</Link>
-              </p>
-
+          <p className="text-small-regular text-light-2 text-center mt-2">
+            Already have an account?
+            <Link
+              to="/sign-in"
+              className="text-primary-500 text-small-semibold ml-1"
+            >
+              Log in
+            </Link>
+          </p>
         </form>
       </div>
     </Form>
